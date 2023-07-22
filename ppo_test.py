@@ -65,7 +65,7 @@ def model(env):
             logprobability_t = logprobabilities(logits, action)
 
             # Store obs, act, rew, v_t, logp_pi_t
-            buffer.macbook(observation, action, reward, value_t, logprobability_t)
+            buffer.store(observation, action, reward, value_t, logprobability_t)
 
             # Update the observation
             observation = observation_new
