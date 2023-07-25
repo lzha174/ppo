@@ -22,7 +22,7 @@ class ShopEnviro(Simulation):
         self.macbook_city = simpy.Store(self.env, capacity=2000)
         self.iphone_city = simpy.Store(self.env, capacity=2000)
 
-        for i in range(150):
+        for i in range(0):
             self.macbook_city.put('init')
             self.iphone_city.put('init')
 
@@ -42,7 +42,7 @@ class ShopEnviro(Simulation):
         self.get_data()
 
     def reset(self):
-        self.state = np.array([0,0])
+        self.state = np.array([0,0,0])
         return self.state, 0, False
 
     def step(self, action):
@@ -51,6 +51,8 @@ class ShopEnviro(Simulation):
         #calculate inventory cost
         total_items = np.sum(self.state)
         self.inventory_period_cost = inventory_cost * total_items
+        debug_output(f'refill at {format_time(self.env.now)} with {action_space[action][0]} macbook, '
+              f'{action_space[action][1]} iphone')
         self.env.process(self.city_macbook_refill(action_space[action][0]))
         self.env.process(self.city_iphone_refill(action_space[action][1]))
 
@@ -81,15 +83,16 @@ class ShopEnviro(Simulation):
         for consumer in self.consumer_arrivals.get_all_consumers():
             arrival_sec = (consumer.arrival_time -  SimSetting.start_time_sim).total_seconds()
             location = consumer.location
-            self.env.process(self.consumer_arrive(id=consumer.consumer_id, arrival_time=arrival_sec,
-                                                  shopping_list=consumer.shopping_list, location=location))
+            if location == city:
+                self.env.process(self.consumer_arrive(id=consumer.consumer_id, arrival_time=arrival_sec,
+                                                      shopping_list=consumer.shopping_list, location=location))
 
-        self.env.process(self.glenfield_macbook_refill())
-        self.env.process(self.glenfield_iphone_refill())
+        self.env.process(self.monitor_revenue())
+        #self.env.process(self.glenfield_iphone_refill())
         #self.env.process(self.city_iphone_refill())
         #self.env.process(self.city_macbook_refill())
-        self.env.process(self.penrose_iphone_refill())
-        self.env.process(self.penrose_macbook_refill())
+        #self.env.process(self.penrose_iphone_refill())
+        #self.env.process(self.penrose_macbook_refill())
 
     def glenfield_macbook_refill(self):
         while True:
@@ -107,16 +110,16 @@ class ShopEnviro(Simulation):
 
     def city_macbook_refill(self, quantity = 10):
 
-        yield self.env.timeout(1 * day_in_seconds)
+        #yield self.env.timeout(1 * day_in_seconds)
         all_put = []
         for q in range(quantity):
             all_put.append(self.macbook_city.put(f'macbook_{q}'))
         yield self.env.all_of(all_put)
-        #print('put macbook item at', format_time(self.env.now))
+        debug_output(f'put macbook {quantity}item at { format_time(self.env.now)}',)
         self.stock_monitor()
 
     def city_iphone_refill(self,quantity = 10):
-        yield self.env.timeout(1 * day_in_seconds)
+        #yield self.env.timeout(1 * day_in_seconds)
         all_put = []
         for q in range(quantity):
             all_put.append(self.iphone_city.put(f'macbook_{q}'))
@@ -137,7 +140,11 @@ class ShopEnviro(Simulation):
 
             yield self.iphone_penrose.put(f'spam + {self.env.now}')
             #print('put phone item at', self.env.now)
-
+    def monitor_revenue(self):
+        while True:
+            yield self.env.timeout(day_in_seconds)
+            debug_output(f'city revenue at {format_time(self.env.now)} is {self.shop_revenue[city]}')
+            a = 1
     def consumer_arrive(self, id=0, shopping_list={'macbook': 4, 'iphone':3}, arrival_time=10, location=None):
 
         yield self.env.timeout(arrival_time)
@@ -154,7 +161,7 @@ class ShopEnviro(Simulation):
         or_events.append(all_requests)
         result = yield self.env.any_of([quit_event, self.env.all_of(all_requests)])
         if quit_event not in result:
-        #print(id,'got all at', format_time(self.env.now))
+            debug_output(f'{id} got all at {format_time(self.env.now)} with reward {revenue}')
             if location == city:
                 self.period_reward += revenue
             end_time = self.env.now
@@ -179,7 +186,13 @@ class ShopEnviro(Simulation):
             #print(f'current revenue = {self.revenue}')
             #print(f'current shop revenue = {self.shop_revenue}')
         else:
-            state = [len(self.shopping_map[shop][macbook].items), len(self.shopping_map[shop][iphone].items)]
+            current_time =  SimSetting.start_time_sim + timedelta(seconds=self.env.now)
+            current_month = current_time.month
+            if current_month == 7:
+                a = 0
+            else:
+                a = 1
+            state = [len(self.shopping_map[shop][macbook].items), len(self.shopping_map[shop][iphone].items), a]
             return state
 
 
@@ -202,7 +215,7 @@ def model():
     print(env.reset())
     observation, episode_return, episode_length = env.reset()[0], 0, 0
     print(observation)
-    epochs = 20
+    epochs = 200
     # Iterate over the number of epochs
     for epoch in range(epochs):
         # Initialize the sum of the returns, lengths and number of episodes for each epoch
@@ -293,3 +306,4 @@ while not done:
     observation_new, _, done = shopEnv.step(action)
     observation = observation_new
     print(format_time(shopEnv.env.now))
+print(shopEnv.shop_revenue[city])

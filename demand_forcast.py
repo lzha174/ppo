@@ -1,4 +1,4 @@
-import itertools
+import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 
 inventory_cost = 2
@@ -25,6 +25,8 @@ class Consumer:
 class ConsumerArrivals:
     def __init__(self):
         self.consumers = {}
+        self.city_macbook_demand = {}  # Dictionary to store total daily demand for City's macbook
+        self.city_iphone_demand = {}   # Dictionary to store total daily demand for City's iphone
 
     def add_consumer(self, consumer_id, consumer):
         self.consumers[consumer_id] = consumer
@@ -61,11 +63,18 @@ class ConsumerArrivals:
             current_time = start_time_july
             while current_time <= end_time_august:
                 # Generate customers only between 7 am and 10 am each day
-                if current_time.hour >= 7 and current_time.hour <= 10:
+                if current_time.hour >= 7 and current_time.hour <= 8:
                     if current_time.month == 7:
                         for i in range(num_customers_july):
                             consumer_id = f"July_{id}"
-                            shopping_list = {'macbook': 1, 'iphone': 5}  # Example shopping list
+                            shopping_list = {'macbook': 0, 'iphone': 4}  # Example shopping list
+                            if location == city:
+                                date = current_time.strftime("%Y-%m-%d")
+                                self.city_macbook_demand[date] = self.city_macbook_demand.get(date, 0) + shopping_list[
+                                    macbook]
+                                self.city_iphone_demand[date] = self.city_iphone_demand.get(date, 0) + shopping_list[
+                                    iphone]
+
                             consumer = Consumer(consumer_id, current_time, shopping_list, location)
                             self.add_consumer(consumer_id, consumer)
                             id += 1
@@ -73,7 +82,13 @@ class ConsumerArrivals:
                     if current_time.month == 8:
                         for i in range(num_customers_august):
                             consumer_id = f"August_{id}"
-                            shopping_list = {'macbook': 5, 'iphone': 0}  # Example shopping list
+                            shopping_list = {'macbook': 4, 'iphone': 0}  # Example shopping list
+                            if location == city:
+                                date = current_time.strftime("%Y-%m-%d")
+                                self.city_macbook_demand[date] = self.city_macbook_demand.get(date, 0) + shopping_list[
+                                    macbook]
+                                self.city_iphone_demand[date] = self.city_iphone_demand.get(date, 0) + shopping_list[
+                                    iphone]
                             consumer = Consumer(consumer_id, current_time, shopping_list, location)
                             self.add_consumer(consumer_id, consumer)
                             id += 1
@@ -99,4 +114,36 @@ if __name__ == "__main__":
     all_consumers = consumer_arrivals.get_all_consumers()
     for consumer in all_consumers:
         print(consumer)
+
+    # Print the total daily demand for City's macbook and iphone
+    print("Total Daily Demand for City's Macbook:")
+    for date, demand in consumer_arrivals.city_macbook_demand.items():
+        print(f"{date}: {demand}")
+
+    print("Total Daily Demand for City's iPhone:")
+    for date, demand in consumer_arrivals.city_iphone_demand.items():
+        print(f"{date}: {demand}")
+
+    city_macbook_demand = consumer_arrivals.city_macbook_demand
+    city_iphone_demand = consumer_arrivals.city_iphone_demand
+
+    # Convert the demand dictionaries to lists for plotting
+    dates = list(city_macbook_demand.keys())
+    macbook_demand = list(city_macbook_demand.values())
+    iphone_demand = list(city_iphone_demand.values())
+
+    # Plot the daily demand for City's macbook and iphone
+    plt.figure(figsize=(12, 6))
+    width = 0.35  # Width of the bars
+    x = range(len(dates))
+    plt.bar(x, macbook_demand, width, label="Macbook Demand")
+    plt.bar([i + width for i in x], iphone_demand, width, label="iPhone Demand")
+    plt.xlabel("Date")
+    plt.ylabel("Daily Demand")
+    plt.title("Daily Demand for City's Macbook and iPhone")
+    plt.legend()
+    plt.xticks([i + width/2 for i in x], dates, rotation=45)
+    plt.tight_layout()
+    plt.show()
+
 

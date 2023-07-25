@@ -9,20 +9,20 @@ import gym
 import scipy.signal
 import time
 
-macbook_actions = range(50, 151, 10)
-iphone_actions = range(50, 151, 10)
+macbook_actions = range(14, 154, 10)
+iphone_actions = range(10, 154, 10)
 
 action_space = [
     (macbook, iphone)
     for macbook in macbook_actions
     for iphone in iphone_actions
-    if macbook + iphone == 150
+    if macbook + iphone == 144
 ]
-
+action_space=[(144,0), (0,144)]
 print(action_space)
 
-observation_dimensions = 2
-num_actions = len(action_space ) - 1
+observation_dimensions = 3
+num_actions = len(action_space )
 
 def get_optimal_action(observation):
     logits = actor(observation)
